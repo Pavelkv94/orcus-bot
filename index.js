@@ -1,31 +1,43 @@
-const bot = require('./bot');
-require('dotenv').config();
+require("dotenv").config();
+const bot = require("./bot");
+const { startBot, menuBot } = require("./commonOptions");
+const { whoisCallback } = require("./tools/whois");
 
+const stateStorage = {
+  state: null,
+  save: function (state) {
+    this.state = state;
+  },
+  get: function () {
+    return this.state;
+  },
+};
 
 // Set up the Telegram bot
 const botActions = () => {
-    bot.on('message', async (msg) => {
-      const text = msg.text;
-      const chatId = msg.chat.id;
-  
-      try {
-        if (text === '/start') {
-            bot.sendSticker(chatId, 'https://tlgrm.ru/_/stickers/9ef/db1/9efdb148-747f-30f8-9575-7f6e06d34bac/7.webp');
-        } 
-      } catch (e) {
-        console.log(e);
-        return bot.sendMessage(chatId, 'Ой! Произошла серьезная ошибка!');
+  bot.on("message", async (msg) => {
+    const text = msg.text;
+    const chatId = msg.chat.id;
+    const currentState = stateStorage.get(); // Get the current state
+
+    try {
+      if (text === "/start") {
+        startBot(chatId);
+      } else if (text === "/menu") {
+        menuBot(chatId, stateStorage);
       }
-    });
-  
-    // bot.on('callback_query', async (msg) => {
-    //   const data = msg.data;
-    //   const chatId = msg.message.chat.id;
-  
-    //   if (data === '24h_history' || data === '7d_history' || data === '30d_history') {
-    //     getHistory(chatId, data);
-    //   }
-    // });
-  };
-  
-  botActions();
+
+      if (text && currentState === "waiting_for_user_input") {
+        
+        whoisCallback(chatId, text);
+        stateStorage.save(null);
+        menuBot(chatId, stateStorage);
+      }
+    } catch (e) {
+      console.log(e);
+      return bot.sendMessage(chatId, "Ой! Произошла серьезная ошибка!");
+    }
+  });
+};
+
+botActions();
